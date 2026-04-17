@@ -108,6 +108,66 @@ func formatSmallLabel(itemId, serial, name string) error {
 	return png.Encode(outFile, canvas)
 }
 
+func formatSmallCableLabel(itemId, serial, name string) error {
+	// DK-11204 cable label: left=text, middle=empty (cable gap), right=QR
+	canvas := image.NewRGBA(image.Rect(0, 0, SMALL_WIDTH, SMALL_HEIGHT))
+	draw.Draw(canvas, canvas.Bounds(), image.White, image.Point{}, draw.Src)
+
+	boldFont := "fonts/roboto-font/RobotoBlack-Powx.ttf"
+	normalFont := "fonts/roboto-font/RobotoRegular.ttf"
+
+	const (
+		sectionW       = SMALL_WIDTH / 3 // 198px per zone
+		logoSize       = 20
+		headerFontSize = 14.0
+		serialFontSize = 46.0
+		nameFontSize   = 17.0
+		nameLineHeight = 21
+	)
+
+	textAreaW := sectionW - SMALL_MARGINS*2
+
+	// Header row: logo + "Monash Automation"
+	_ = overlayImage(canvas, "assets/monash_automation_logo.png", SMALL_MARGINS, SMALL_MARGINS, logoSize, logoSize)
+	addTextWithFont(canvas, SMALL_MARGINS+logoSize+4, SMALL_MARGINS, "Monash Automation", headerFontSize, normalFont, false)
+
+	// Serial — below header
+	addTextWithFont(canvas, SMALL_MARGINS, SMALL_MARGINS+logoSize+2, serial, serialFontSize, boldFont, true)
+
+	// Name — word-wrapped, pinned to bottom of left zone
+	nameLines := wrapText(name, textAreaW, nameFontSize, normalFont, false)
+	nameBlockH := len(nameLines) * nameLineHeight
+	nameStartY := SMALL_HEIGHT - SMALL_MARGINS - nameBlockH
+	for i, line := range nameLines {
+		addTextWithFont(canvas, SMALL_MARGINS, nameStartY+i*nameLineHeight, line, nameFontSize, normalFont, false)
+	}
+
+	// QR — right zone, vertically centred
+	qrSize := SMALL_HEIGHT - SMALL_MARGINS*2
+	qrX := SMALL_WIDTH - sectionW + SMALL_MARGINS
+	createQRAt(canvas, itemId, qrSize, qrX, SMALL_MARGINS)
+
+	outFile, err := os.Create("temp/label_small_cable.png")
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	return png.Encode(outFile, canvas)
+}
+
+func createQRAt(canvas *image.RGBA, itemId string, size, x, y int) error {
+	qr, err := qrcode.New(itemId, qrcode.High)
+	if err != nil {
+		return err
+	}
+	qr.DisableBorder = true
+	qrImg := qr.Image(size)
+	offset := image.Pt(x, y)
+	draw.Draw(canvas, qrImg.Bounds().Add(offset), qrImg, image.Point{}, draw.Over)
+	return nil
+}
+
 func createSmallQR(canvas *image.RGBA, itemId string, length, yOffset int) error {
 	qr, err := qrcode.New(itemId, qrcode.High)
 	if err != nil {

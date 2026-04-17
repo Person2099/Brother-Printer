@@ -32,8 +32,8 @@ go install       # Compiles and installs binary
 ```
 
 3. **Configure printers:**
-   - Ensure the standard/cable printer is installed in CUPS as `brother_ql.700`
-   - Ensure the small label printer is installed in CUPS as `brother_ql.700_small`
+   - Ensure the standard/cable printer is installed in CUPS as `brother_ql.700` using DK-11201 label stock
+   - Ensure the small label printer is installed in CUPS as `brother_ql.700_small` using DK-11204 label stock
    - Verify with: `lpstat -p -d`
    - To use different CUPS names, update `STANDARD_PRINTER_NAME` and `SMALL_PRINTER_NAME` in `main.go`
 
@@ -115,7 +115,7 @@ curl -X POST http://localhost:6767/printer \
   }'
 ```
 
-**Cable label (DK-11201, 29mm × 90mm — same format as standard):**
+**Small cable label (DK-11204, 17mm × 54mm, folds over cable):**
 ```bash
 curl -X POST http://localhost:6767/printer \
   -H "Content-Type: application/json" \
@@ -134,17 +134,24 @@ curl -X POST http://localhost:6767/printer \
 |------|-------|--------------|--------|---------|
 | Standard (0) | DK-11201 | 29mm × 90mm | 306 × 991 px | `brother_ql.700` |
 | Small (1) | DK-11204 | 17mm × 54mm | 187 × 594 px | `brother_ql.700_small` |
-| Cable (2) | DK-11201 | 29mm × 90mm | 306 × 991 px | `brother_ql.700` |
+| Small Cable (2) | DK-11204 | 17mm × 54mm | 187 × 594 px | `brother_ql.700_small` |
 
-**Standard / Cable label:**
+**Standard:**
 - QR code: 241 × 241 px (High error correction)
 - Margins: 30 px
 - Serial: 100pt bold · Name: 40pt regular · Header: 30pt regular
 
-**Small label:**
+**Small:**
 - QR code: 160 × 160 px (High error correction)
 - Margins: 10 px
-- Serial: 52pt bold · Name: 20pt regular
+- Serial: 80pt bold · Name: 20pt regular
+
+**Small Cable:**
+- Designed to fold over a cable along the y-axis
+- Left zone (~18mm): serial number (52pt bold) + item name (17pt regular, word-wrapped)
+- Middle zone (~18mm): intentionally blank — cable rests here
+- Right zone (~18mm): QR code (167 × 167 px, High error correction)
+- Margins: 10 px
 
 ## Project Structure
 

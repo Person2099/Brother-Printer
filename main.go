@@ -38,7 +38,15 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: err.Error()})
 			return
 		}
-	default: // 0: standard, 2: cable (both use standard format)
+	case 2: // small cable
+		labelFile = "temp/label_small_cable.png"
+		printerName = SMALL_PRINTER_NAME
+		if err := formatSmallCableLabel(request.ItemId, request.Serial, request.Name); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: err.Error()})
+			return
+		}
+	default: // 0: standard
 		labelFile = "temp/label.png"
 		printerName = STANDARD_PRINTER_NAME
 		if err := formatLabel(request.ItemId, request.Serial, request.Name); err != nil {

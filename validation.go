@@ -11,7 +11,7 @@ type Request struct {
 	Serial    string `json:"serial"`
 	Quantity  int    `json:"quantity"`
 	ItemId    string `json:"itemId"`
-	LabelType int    `json:"labelType"` // 0: standard, 1: small, 2: cable
+	LabelType int    `json:"labelType"` // 0: standard, 1: small, 2: small cable
 }
 
 type SuccessResponse struct {
@@ -80,7 +80,7 @@ func validJson(req *Request, write http.ResponseWriter) bool {
 		write.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(write).Encode(ErrorResponse{
 			Ok:    false,
-			Error: "LabelType must be 0 (standard), 1 (small), or 2 (cable)",
+			Error: "LabelType must be 0 (standard), 1 (small), or 2 (small cable)",
 		})
 		return false
 	}
