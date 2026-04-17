@@ -6,13 +6,16 @@ import (
 	"image/draw"
 	"image/png"
 	"os"
+	"strings"
 
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
 	"github.com/nfnt/resize"
 	"github.com/skip2/go-qrcode"
+	xfont "golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gomonobold"
 	"golang.org/x/image/font/gofont/goregular"
+	"golang.org/x/image/math/fixed"
 )
 
 const (
@@ -20,6 +23,12 @@ const (
 	HEIGHT     = 306
 	MARGINS    = 30
 	QR_CODE_LW = 241
+
+	// DK-11204: 17mm x 54mm at ~11px/mm
+	SMALL_WIDTH      = 594
+	SMALL_HEIGHT     = 187
+	SMALL_MARGINS    = 10
+	SMALL_QR_CODE_LW = 160
 )
 
 func formatLabel(itemId, serial, name string) error {
@@ -50,6 +59,127 @@ func formatLabel(itemId, serial, name string) error {
 	defer outFile.Close()
 
 	return png.Encode(outFile, canvas)
+}
+
+func formatSmallLabel(itemId, serial, name string) error {
+	// DK-11204: 17mm x 54mm canvas
+	canvas := image.NewRGBA(image.Rect(0, 0, SMALL_WIDTH, SMALL_HEIGHT))
+	draw.Draw(canvas, canvas.Bounds(), image.White, image.Point{}, draw.Src)
+
+	boldFont := "fonts/roboto-font/RobotoBlack-Powx.ttf"
+	normalFont := "fonts/roboto-font/RobotoRegular.ttf"
+
+	// Header row: logo + "Monash Automation" — anchored to top
+	const (
+		logoSize       = 30
+		headerFontSize = 22
+		serialFontSize = 80
+		nameFontSize   = 20
+		nameLineHeight = 24 // nameFontSize + 4px leading
+	)
+	_ = overlayImage(canvas, "assets/monash_automation_logo.png", SMALL_MARGINS, SMALL_MARGINS, logoSize, logoSize)
+	addTextWithFont(canvas, SMALL_MARGINS+logoSize+6, SMALL_MARGINS, "Monash Automation", headerFontSize, normalFont, false)
+
+	// Serial number — fills the middle
+	addTextWithFont(canvas, SMALL_MARGINS, SMALL_MARGINS+logoSize+4, serial, serialFontSize, boldFont, true)
+
+	// Item name — word-wrapped, anchored to bottom
+	textAreaWidth := SMALL_WIDTH - SMALL_QR_CODE_LW - SMALL_MARGINS*3
+	nameLines := wrapText(name, textAreaWidth, nameFontSize, normalFont, false)
+	nameBlockHeight := len(nameLines) * nameLineHeight
+	nameStartY := SMALL_HEIGHT - SMALL_MARGINS - nameBlockHeight
+	for i, line := range nameLines {
+		addTextWithFont(canvas, SMALL_MARGINS, nameStartY+i*nameLineHeight, line, nameFontSize, normalFont, false)
+	}
+
+	// QR code — right side, vertically centred
+	qrOffset := (SMALL_HEIGHT - SMALL_QR_CODE_LW) / 2
+	if qrOffset < 0 {
+		qrOffset = 0
+	}
+	createSmallQR(canvas, itemId, SMALL_QR_CODE_LW, qrOffset)
+
+	outFile, err := os.Create("temp/label_small.png")
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	return png.Encode(outFile, canvas)
+}
+
+func formatSmallCableLabel(itemId, serial, name string) error {
+	// DK-11204 cable label: left=text, middle=empty (cable gap), right=QR
+	canvas := image.NewRGBA(image.Rect(0, 0, SMALL_WIDTH, SMALL_HEIGHT))
+	draw.Draw(canvas, canvas.Bounds(), image.White, image.Point{}, draw.Src)
+
+	boldFont := "fonts/roboto-font/RobotoBlack-Powx.ttf"
+	normalFont := "fonts/roboto-font/RobotoRegular.ttf"
+
+	const (
+		sectionW       = SMALL_WIDTH / 3 // 198px per zone
+		logoSize       = 20
+		headerFontSize = 14.0
+		serialFontSize = 46.0
+		nameFontSize   = 17.0
+		nameLineHeight = 21
+	)
+
+	textAreaW := sectionW - SMALL_MARGINS*2
+
+	// Header row: logo + "Monash Automation"
+	_ = overlayImage(canvas, "assets/monash_automation_logo.png", SMALL_MARGINS, SMALL_MARGINS, logoSize, logoSize)
+	addTextWithFont(canvas, SMALL_MARGINS+logoSize+4, SMALL_MARGINS, "Monash Automation", headerFontSize, normalFont, false)
+
+	// Serial — below header
+	addTextWithFont(canvas, SMALL_MARGINS, SMALL_MARGINS+logoSize+2, serial, serialFontSize, boldFont, true)
+
+	// Name — word-wrapped, pinned to bottom of left zone
+	nameLines := wrapText(name, textAreaW, nameFontSize, normalFont, false)
+	nameBlockH := len(nameLines) * nameLineHeight
+	nameStartY := SMALL_HEIGHT - SMALL_MARGINS - nameBlockH
+	for i, line := range nameLines {
+		addTextWithFont(canvas, SMALL_MARGINS, nameStartY+i*nameLineHeight, line, nameFontSize, normalFont, false)
+	}
+
+	// QR — right zone, vertically centred
+	qrSize := SMALL_HEIGHT - SMALL_MARGINS*2
+	qrX := SMALL_WIDTH - sectionW + SMALL_MARGINS
+	createQRAt(canvas, itemId, qrSize, qrX, SMALL_MARGINS)
+
+	outFile, err := os.Create("temp/label_small_cable.png")
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	return png.Encode(outFile, canvas)
+}
+
+func createQRAt(canvas *image.RGBA, itemId string, size, x, y int) error {
+	qr, err := qrcode.New(itemId, qrcode.High)
+	if err != nil {
+		return err
+	}
+	qr.DisableBorder = true
+	qrImg := qr.Image(size)
+	offset := image.Pt(x, y)
+	draw.Draw(canvas, qrImg.Bounds().Add(offset), qrImg, image.Point{}, draw.Over)
+	return nil
+}
+
+func createSmallQR(canvas *image.RGBA, itemId string, length, yOffset int) error {
+	qr, err := qrcode.New(itemId, qrcode.High)
+	if err != nil {
+		return err
+	}
+
+	qr.DisableBorder = true
+	qrImg := qr.Image(length)
+
+	offset := image.Pt(SMALL_WIDTH-length-SMALL_MARGINS, yOffset)
+	draw.Draw(canvas, qrImg.Bounds().Add(offset), qrImg, image.Point{}, draw.Over)
+	return nil
 }
 
 func createQR(canvas *image.RGBA, itemId string, length int) error {
@@ -83,6 +213,64 @@ func overlayImage(canvas *image.RGBA, imagePath string, x, y, size_x, size_y int
 	offset := image.Pt(x, y)
 	draw.Draw(canvas, img.Bounds().Add(offset), img, image.Point{}, draw.Over)
 	return nil
+}
+
+func wrapText(text string, maxWidth int, fontSize float64, fontPath string, bold bool) []string {
+	fontData := loadFontData(fontPath, bold)
+	f, err := truetype.Parse(fontData)
+	if err != nil {
+		return []string{text}
+	}
+	face := truetype.NewFace(f, &truetype.Options{Size: fontSize, DPI: 72})
+	defer face.Close()
+
+	words := strings.Fields(text)
+	var lines []string
+	current := ""
+
+	for _, word := range words {
+		candidate := word
+		if current != "" {
+			candidate = current + " " + word
+		}
+		if measureString(candidate, face) > maxWidth && current != "" {
+			lines = append(lines, current)
+			current = word
+		} else {
+			current = candidate
+		}
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return lines
+}
+
+func measureString(s string, face xfont.Face) int {
+	width := fixed.Int26_6(0)
+	var prev rune
+	for i, r := range s {
+		if i > 0 {
+			width += face.Kern(prev, r)
+		}
+		adv, _ := face.GlyphAdvance(r)
+		width += adv
+		prev = r
+	}
+	return int(width >> 6)
+}
+
+func loadFontData(fontPath string, bold bool) []byte {
+	if fontPath != "" {
+		data, err := os.ReadFile(fontPath)
+		if err == nil {
+			return data
+		}
+	}
+	if bold {
+		return gomonobold.TTF
+	}
+	return goregular.TTF
 }
 
 func addTextWithFont(img *image.RGBA, x, y int, text string, fontSize float64, fontPath string, bold bool) {

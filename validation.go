@@ -7,10 +7,11 @@ import (
 )
 
 type Request struct {
-	Name     string `json:"name"`
-	Serial   string `json:"serial"`
-	Quantity int    `json:"quantity"`
-	ItemId   string `json:"itemId"`
+	Name      string `json:"name"`
+	Serial    string `json:"serial"`
+	Quantity  int    `json:"quantity"`
+	ItemId    string `json:"itemId"`
+	LabelType int    `json:"labelType"` // 0: standard, 1: small, 2: small cable
 }
 
 type SuccessResponse struct {
@@ -70,9 +71,19 @@ func validJson(req *Request, write http.ResponseWriter) bool {
 		write.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(write).Encode(ErrorResponse{
 			Ok:    false,
-			Error: "Serial is required",
+			Error: "ItemId must be a valid UUID",
 		})
 		return false
 	}
+
+	if req.LabelType < 0 || req.LabelType > 2 {
+		write.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(write).Encode(ErrorResponse{
+			Ok:    false,
+			Error: "LabelType must be 0 (standard), 1 (small), or 2 (small cable)",
+		})
+		return false
+	}
+
 	return true
 }
