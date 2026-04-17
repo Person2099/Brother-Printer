@@ -31,7 +31,7 @@ func malformedJson(req *Request, write http.ResponseWriter, read *http.Request) 
 		write.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(write).Encode(ErrorResponse{
 			Ok:    false,
-			Error: "Json is malformed",
+			Error: "malformed JSON: " + err.Error(),
 		})
 		return true
 	}

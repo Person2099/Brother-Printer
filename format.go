@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -44,21 +45,24 @@ func formatLabel(itemId, serial, name string) error {
 	addTextWithFont(canvas, MARGINS, HEIGHT/2-50, serial, 100, boldFont, true)
 	addTextWithFont(canvas, MARGINS, HEIGHT-MARGINS-40, name, 40, normalFont, false)
 
-	// Add the MA logo
 	if err := overlayImage(canvas, "assets/monash_automation_logo.png", MARGINS, MARGINS, 40, 40); err != nil {
-		return err
+		return fmt.Errorf("failed to overlay logo: %w", err)
 	}
 
-	createQR(canvas, itemId, QR_CODE_LW)
+	if err := createQR(canvas, itemId, QR_CODE_LW); err != nil {
+		return fmt.Errorf("failed to generate QR code: %w", err)
+	}
 
-	// Save the result
 	outFile, err := os.Create("temp/label.png")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create label file: %w", err)
 	}
 	defer outFile.Close()
 
-	return png.Encode(outFile, canvas)
+	if err := png.Encode(outFile, canvas); err != nil {
+		return fmt.Errorf("failed to encode label image: %w", err)
+	}
+	return nil
 }
 
 func formatSmallLabel(itemId, serial, name string) error {
@@ -92,20 +96,24 @@ func formatSmallLabel(itemId, serial, name string) error {
 		addTextWithFont(canvas, SMALL_MARGINS, nameStartY+i*nameLineHeight, line, nameFontSize, normalFont, false)
 	}
 
-	// QR code — right side, vertically centred
 	qrOffset := (SMALL_HEIGHT - SMALL_QR_CODE_LW) / 2
 	if qrOffset < 0 {
 		qrOffset = 0
 	}
-	createSmallQR(canvas, itemId, SMALL_QR_CODE_LW, qrOffset)
+	if err := createSmallQR(canvas, itemId, SMALL_QR_CODE_LW, qrOffset); err != nil {
+		return fmt.Errorf("failed to generate QR code: %w", err)
+	}
 
 	outFile, err := os.Create("temp/label_small.png")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create label file: %w", err)
 	}
 	defer outFile.Close()
 
-	return png.Encode(outFile, canvas)
+	if err := png.Encode(outFile, canvas); err != nil {
+		return fmt.Errorf("failed to encode label image: %w", err)
+	}
+	return nil
 }
 
 func formatSmallCableLabel(itemId, serial, name string) error {
@@ -142,18 +150,22 @@ func formatSmallCableLabel(itemId, serial, name string) error {
 		addTextWithFont(canvas, SMALL_MARGINS, nameStartY+i*nameLineHeight, line, nameFontSize, normalFont, false)
 	}
 
-	// QR — right zone, vertically centred
 	qrSize := SMALL_HEIGHT - SMALL_MARGINS*2
 	qrX := SMALL_WIDTH - sectionW + SMALL_MARGINS
-	createQRAt(canvas, itemId, qrSize, qrX, SMALL_MARGINS)
+	if err := createQRAt(canvas, itemId, qrSize, qrX, SMALL_MARGINS); err != nil {
+		return fmt.Errorf("failed to generate QR code: %w", err)
+	}
 
 	outFile, err := os.Create("temp/label_small_cable.png")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create label file: %w", err)
 	}
 	defer outFile.Close()
 
-	return png.Encode(outFile, canvas)
+	if err := png.Encode(outFile, canvas); err != nil {
+		return fmt.Errorf("failed to encode label image: %w", err)
+	}
+	return nil
 }
 
 func createQRAt(canvas *image.RGBA, itemId string, size, x, y int) error {
@@ -200,15 +212,15 @@ func createQR(canvas *image.RGBA, itemId string, length int) error {
 func overlayImage(canvas *image.RGBA, imagePath string, x, y, size_x, size_y int) error {
 	file, err := os.Open(imagePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open image %q: %w", imagePath, err)
 	}
 	defer file.Close()
 
 	img, _, err := image.Decode(file)
-	img = resize.Resize(uint(size_x), uint(size_y), img, resize.Lanczos3)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to decode image %q: %w", imagePath, err)
 	}
+	img = resize.Resize(uint(size_x), uint(size_y), img, resize.Lanczos3)
 
 	offset := image.Pt(x, y)
 	draw.Draw(canvas, img.Bounds().Add(offset), img, image.Point{}, draw.Over)
