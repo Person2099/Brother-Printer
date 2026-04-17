@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	PRINTER_NAME = "brother_ql.700"
+	STANDARD_PRINTER_NAME = "brother_ql.700"
+	SMALL_PRINTER_NAME    = "brother_ql.700_small"
 )
 
 func printHandler(w http.ResponseWriter, r *http.Request) {
@@ -25,19 +26,29 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := formatLabel(
-		request.ItemId,
-		request.Serial,
-		request.Name,
-	); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
-			Ok:    false,
-			Error: "Json is malformed",
-		})
+	var labelFile string
+	var printerName string
+
+	switch request.LabelType {
+	case 1: // small
+		labelFile = "temp/label_small.png"
+		printerName = SMALL_PRINTER_NAME
+		if err := formatSmallLabel(request.ItemId, request.Serial, request.Name); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: err.Error()})
+			return
+		}
+	default: // 0: standard, 2: cable (both use standard format)
+		labelFile = "temp/label.png"
+		printerName = STANDARD_PRINTER_NAME
+		if err := formatLabel(request.ItemId, request.Serial, request.Name); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: err.Error()})
+			return
+		}
 	}
 
-	cmd := exec.Command("lp", "-d", PRINTER_NAME, "-n", fmt.Sprintf("%d", request.Quantity), "temp/label.jpg")
+	cmd := exec.Command("lp", "-d", printerName, "-n", fmt.Sprintf("%d", request.Quantity), labelFile)
 	err := cmd.Run()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
