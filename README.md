@@ -32,8 +32,8 @@ go install       # Compiles and installs binary
 ```
 
 3. **Configure printers:**
-   - Ensure the standard/cable printer is installed in CUPS as `brother_ql.700` using DK-11201 label stock
-   - Ensure the small label printer is installed in CUPS as `brother_ql.700_small` using DK-11204 label stock
+   - Ensure the standard label printer is installed in CUPS as `brother_ql.700` using DK-11201 label stock
+   - Ensure the small/cable label printer is installed in CUPS as `brother_ql.700_small` using DK-11204 label stock
    - Verify with: `lpstat -p -d`
    - To use different CUPS names, update `STANDARD_PRINTER_NAME` and `SMALL_PRINTER_NAME` in `main.go`
 
@@ -134,7 +134,7 @@ curl -X POST http://localhost:6767/printer \
 |------|-------|--------------|--------|---------|
 | Standard (0) | DK-11201 | 29mm × 90mm | 306 × 991 px | `brother_ql.700` |
 | Small (1) | DK-11204 | 17mm × 54mm | 187 × 594 px | `brother_ql.700_small` |
-| Small Cable (2) | DK-11204 | 17mm × 54mm | 187 × 594 px | `brother_ql.700_small` |
+| Cable (2) | DK-11204 | 17mm × 54mm | 187 × 594 px | `brother_ql.700_small` |
 
 **Standard:**
 - QR code: 241 × 241 px (High error correction)
@@ -147,10 +147,10 @@ curl -X POST http://localhost:6767/printer \
 - Serial: 80pt bold · Name: 20pt regular
 
 **Small Cable:**
-- Designed to fold over a cable along the y-axis
-- Left zone (~18mm): serial number (52pt bold) + item name (17pt regular, word-wrapped)
-- Middle zone (~18mm): intentionally blank — cable rests here
-- Right zone (~18mm): QR code (167 × 167 px, High error correction)
+- Designed to fold over a cable along the y-axis (centre fold at 27mm)
+- 7.5mm blank gap each side of the fold — cable rests in this zone
+- Left zone (0–19.5mm): logo + "Monash Automation" header, serial (46pt bold), item name (17pt regular, word-wrapped)
+- Right zone (34.5–54mm): QR code (167 × 167 px, High error correction), centred
 - Margins: 10 px
 
 ## Project Structure

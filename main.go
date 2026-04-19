@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"strings"
 )
 
 const (
@@ -57,13 +58,14 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmd := exec.Command("lp", "-d", printerName, "-n", fmt.Sprintf("%d", request.Quantity), labelFile)
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
-			Ok:    false,
-			Error: err.Error(),
-		})
+		msg := fmt.Sprintf("print failed on printer %q: %s", printerName, err)
+		if detail := strings.TrimSpace(string(out)); detail != "" {
+			msg += ": " + detail
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: msg})
 		return
 	}
 
