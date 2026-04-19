@@ -41,11 +41,33 @@ func formatLabel(itemId, serial, name string) error {
 	normalFont := "fonts/roboto-font/RobotoRegular.ttf"
 	boldFont  := "fonts/roboto-font/RobotoBlack-Powx.ttf"
 
-	addTextWithFont(canvas, MARGINS+30+25, MARGINS, "Monash Automation", 30, normalFont, false)
-	addTextWithFont(canvas, MARGINS, HEIGHT/2-50, serial, 100, boldFont, true)
-	addTextWithFont(canvas, MARGINS, HEIGHT-MARGINS-40, name, 40, normalFont, false)
+	const (
+		nameFontSize   = 40.0
+		nameLineHeight = 46
+		titleY         = MARGINS + 15
+		serialFontSize = 100.0
+		headerBottom   = titleY + 44 // below 40px logo with gap
+	)
 
-	if err := overlayImage(canvas, "assets/monash_automation_logo.png", MARGINS, MARGINS, 40, 40); err != nil {
+	addTextWithFont(canvas, MARGINS+30+25, titleY, "Monash Automation", 30, normalFont, false)
+
+	textAreaWidth := WIDTH - QR_CODE_LW - MARGINS*3
+	nameLines := wrapText(name, textAreaWidth, nameFontSize, normalFont, false)
+	nameBlockHeight := len(nameLines) * nameLineHeight
+	nameStartY := HEIGHT - MARGINS - nameBlockHeight
+
+	// Position serial between header and name block, with 8px gaps
+	serialY := nameStartY - int(serialFontSize) - 8
+	if serialY < headerBottom {
+		serialY = headerBottom
+	}
+	addTextWithFont(canvas, MARGINS, serialY, serial, serialFontSize, boldFont, true)
+
+	for i, line := range nameLines {
+		addTextWithFont(canvas, MARGINS, nameStartY+i*nameLineHeight, line, nameFontSize, normalFont, false)
+	}
+
+	if err := overlayImage(canvas, "assets/monash_automation_logo.png", MARGINS, titleY, 40, 40); err != nil {
 		return fmt.Errorf("failed to overlay logo: %w", err)
 	}
 
@@ -117,7 +139,8 @@ func formatSmallLabel(itemId, serial, name string) error {
 }
 
 func formatSmallCableLabel(itemId, serial, name string) error {
-	// DK-11204 cable label: left=text, middle=empty (cable gap), right=QR
+	// DK-11204 cable label: wraps around cable at centre fold.
+	// 7.5mm gap each side of the fold (x=297) → text zone 0–215px, QR zone 379–594px.
 	canvas := image.NewRGBA(image.Rect(0, 0, SMALL_WIDTH, SMALL_HEIGHT))
 	draw.Draw(canvas, canvas.Bounds(), image.White, image.Point{}, draw.Src)
 
@@ -125,7 +148,11 @@ func formatSmallCableLabel(itemId, serial, name string) error {
 	normalFont := "fonts/roboto-font/RobotoRegular.ttf"
 
 	const (
-		sectionW       = SMALL_WIDTH / 3 // 198px per zone
+		// 7.5mm × 11px/mm ≈ 82px each side of the centre fold
+		gapHalf        = 82
+		foldX          = SMALL_WIDTH / 2 // 297px
+		textZoneW      = foldX - gapHalf // 215px
+		qrZoneX        = foldX + gapHalf // 379px
 		logoSize       = 20
 		headerFontSize = 14.0
 		serialFontSize = 46.0
@@ -133,7 +160,7 @@ func formatSmallCableLabel(itemId, serial, name string) error {
 		nameLineHeight = 21
 	)
 
-	textAreaW := sectionW - SMALL_MARGINS*2
+	textAreaW := textZoneW - SMALL_MARGINS*2
 
 	// Header row: logo + "Monash Automation"
 	_ = overlayImage(canvas, "assets/monash_automation_logo.png", SMALL_MARGINS, SMALL_MARGINS, logoSize, logoSize)
@@ -150,9 +177,15 @@ func formatSmallCableLabel(itemId, serial, name string) error {
 		addTextWithFont(canvas, SMALL_MARGINS, nameStartY+i*nameLineHeight, line, nameFontSize, normalFont, false)
 	}
 
-	qrSize := SMALL_HEIGHT - SMALL_MARGINS*2
-	qrX := SMALL_WIDTH - sectionW + SMALL_MARGINS
-	if err := createQRAt(canvas, itemId, qrSize, qrX, SMALL_MARGINS); err != nil {
+	// QR — centred in the right zone
+	qrZoneW := SMALL_WIDTH - qrZoneX
+	qrSize := SMALL_HEIGHT - SMALL_MARGINS*2 // 167px
+	if qrSize > qrZoneW-SMALL_MARGINS*2 {
+		qrSize = qrZoneW - SMALL_MARGINS*2
+	}
+	qrX := qrZoneX + (qrZoneW-qrSize)/2
+	qrY := (SMALL_HEIGHT - qrSize) / 2
+	if err := createQRAt(canvas, itemId, qrSize, qrX, qrY); err != nil {
 		return fmt.Errorf("failed to generate QR code: %w", err)
 	}
 
