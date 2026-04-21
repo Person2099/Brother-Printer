@@ -66,14 +66,11 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	cmd := exec.Command("brother_ql",
-		"-p", printer,
-		"-m", BROTHER_QL_MODEL,
-		"print",
-		"-l", labelSize,
-		"-n", fmt.Sprintf("%d", request.Quantity),
-		labelFile,
-	)
+	args := []string{"-p", printer, "-m", BROTHER_QL_MODEL, "print", "-l", labelSize}
+	for i := 0; i < request.Quantity; i++ {
+		args = append(args, labelFile)
+	}
+	cmd := exec.Command("brother_ql", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		msg := fmt.Sprintf("print failed: %s", err)
