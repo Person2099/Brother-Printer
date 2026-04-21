@@ -9,8 +9,13 @@ import (
 )
 
 const (
-	STANDARD_PRINTER_NAME = "brother_ql.700"
-	SMALL_PRINTER_NAME    = "brother_ql.700_small"
+	BROTHER_QL_MODEL = "QL-700"
+
+	STANDARD_PRINTER    = "usb://0x04f9:2042?serial=000F2G709185"
+	STANDARD_LABEL_SIZE = "29x90"
+
+	SMALL_PRINTER    = "usb://0x04f9:2042?serial=SMALL_SERIAL"
+	SMALL_LABEL_SIZE = "17x54"
 )
 
 func printHandler(w http.ResponseWriter, r *http.Request) {
@@ -28,12 +33,14 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var labelFile string
-	var printerName string
+	var labelSize string
+	var printer string
 
 	switch request.LabelType {
 	case 1: // small
 		labelFile = "temp/label_small.png"
-		printerName = SMALL_PRINTER_NAME
+		labelSize = SMALL_LABEL_SIZE
+		printer = SMALL_PRINTER
 		if err := formatSmallLabel(request.ItemId, request.Serial, request.Name); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: err.Error()})
@@ -41,7 +48,8 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case 2: // small cable
 		labelFile = "temp/label_small_cable.png"
-		printerName = SMALL_PRINTER_NAME
+		labelSize = SMALL_LABEL_SIZE
+		printer = SMALL_PRINTER
 		if err := formatSmallCableLabel(request.ItemId, request.Serial, request.Name); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: err.Error()})
@@ -49,7 +57,8 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	default: // 0: standard
 		labelFile = "temp/label.png"
-		printerName = STANDARD_PRINTER_NAME
+		labelSize = STANDARD_LABEL_SIZE
+		printer = STANDARD_PRINTER
 		if err := formatLabel(request.ItemId, request.Serial, request.Name); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: err.Error()})
@@ -57,10 +66,17 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	cmd := exec.Command("lp", "-d", printerName, "-n", fmt.Sprintf("%d", request.Quantity), labelFile)
+	cmd := exec.Command("brother_ql",
+		"-p", printer,
+		"-m", BROTHER_QL_MODEL,
+		"print",
+		"-l", labelSize,
+		"-n", fmt.Sprintf("%d", request.Quantity),
+		labelFile,
+	)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		msg := fmt.Sprintf("print failed on printer %q: %s", printerName, err)
+		msg := fmt.Sprintf("print failed: %s", err)
 		if detail := strings.TrimSpace(string(out)); detail != "" {
 			msg += ": " + detail
 		}
