@@ -11,10 +11,10 @@ import (
 const (
 	BROTHER_QL_MODEL = "QL-700"
 
-	STANDARD_PRINTER    = "usb://0x04f9:2042?serial=000F2G709185"
+	STANDARD_PRINTER    = "file:///dev/brother_ql_standard"
 	STANDARD_LABEL_SIZE = "29x90"
 
-	SMALL_PRINTER    = "usb://0x04f9:2042?serial=SMALL_SERIAL"
+	SMALL_PRINTER    = "file:///dev/brother_ql_small"
 	SMALL_LABEL_SIZE = "17x54"
 )
 
