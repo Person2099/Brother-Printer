@@ -16,6 +16,8 @@ const (
 
 	SMALL_PRINTER    = "usb://0x04f9:0x2042"
 	SMALL_LABEL_SIZE = "17x54"
+
+	QR_HEAD_URL = "inventory.monashautomation.com/qr/"
 )
 
 func printHandler(w http.ResponseWriter, r *http.Request) {

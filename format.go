@@ -202,7 +202,7 @@ func formatSmallCableLabel(itemId, serial, name string) error {
 }
 
 func createQRAt(canvas *image.RGBA, itemId string, size, x, y int) error {
-	qr, err := qrcode.New(itemId, qrcode.High)
+	qr, err := qrcode.New(QR_HEAD_URL+itemId, qrcode.High)
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func createQRAt(canvas *image.RGBA, itemId string, size, x, y int) error {
 }
 
 func createSmallQR(canvas *image.RGBA, itemId string, length, yOffset int) error {
-	qr, err := qrcode.New(itemId, qrcode.High)
+	qr, err := qrcode.New(QR_HEAD_URL+itemId, qrcode.High)
 	if err != nil {
 		return err
 	}
@@ -228,7 +228,7 @@ func createSmallQR(canvas *image.RGBA, itemId string, length, yOffset int) error
 }
 
 func createQR(canvas *image.RGBA, itemId string, length int) error {
-	qr, err := qrcode.New(itemId, qrcode.High)
+	qr, err := qrcode.New(QR_HEAD_URL+itemId, qrcode.High)
 	if err != nil {
 		return err
 	}
