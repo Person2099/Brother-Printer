@@ -26,8 +26,6 @@ func printHandler(w http.ResponseWriter, r *http.Request) {
 
 	if token := os.Getenv("PRINTER_BEARER_TOKEN"); token != "" {
 		if r.Header.Get("Authorization") != "Bearer "+token {
-			fmt.Printf("unauthorized: got %q\n", r.Header.Get("Authorization"))
-			fmt.Printf("expected: %q\n", token)
 			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: "unauthorized"})
 			return
