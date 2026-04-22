@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -22,6 +23,14 @@ const (
 
 func printHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	if token := os.Getenv("PRINTER_BEARER_TOKEN"); token != "" {
+		if r.Header.Get("Authorization") != "Bearer "+token {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ErrorResponse{Ok: false, Error: "unauthorized"})
+			return
+		}
+	}
 
 	// Check if the json is malformed
 	var request Request
